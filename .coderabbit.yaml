@@ -1,0 +1,19 @@
+# CodeRabbit configuration
+language: en
+early_access: false
+
+reviews:
+  profile: chill
+  request_changes_workflow: true
+  high_level_summary: true
+  poem: false
+  review_status: true
+  collapse_walkthrough: true
+  path_instructions:
+    - path: "**/supabase/**"
+      instructions: "Review for database schema changes, migration safety, RLS policies, and Supabase best practices."
+    - path: "**/*.sql"
+      instructions: "Check for migration safety, index usage, injection risks, and backward compatibility."
+
+chat:
+  auto_reply: true

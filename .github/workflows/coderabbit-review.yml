@@ -1,0 +1,57 @@
+name: CodeRabbit Review
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+    branches: [main, dev]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  coderabbit:
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.draft == false
+    steps:
+      - name: Checkout PR
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install CodeRabbit CLI
+        env:
+          CODERRABBIT_API_KEY: ${{ secrets.CODERABBIT_API_KEY }}
+        run: |
+          if [ -z "$CODERRABBIT_API_KEY" ]; then
+            echo "CODERABBIT_API_KEY not set. Skipping CodeRabbit review."
+            exit 0
+          fi
+          curl -fsSL https://cli.coderabbit.ai/install.sh | sh
+          cr auth login --api-key "$CODERRABBIT_API_KEY"
+
+      - name: Run CodeRabbit review
+        id: review
+        env:
+          CODERRABBIT_API_KEY: ${{ secrets.CODERABBIT_API_KEY }}
+        run: |
+          if [ -z "$CODERRABBIT_API_KEY" ]; then
+            echo "body=CodeRabbit API key not configured." >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          cr review --base "${{ github.base_ref }}" --agent > /tmp/cr-review.json || true
+          echo "body<<EOF" >> "$GITHUB_OUTPUT"
+          cat /tmp/cr-review.json | jq -r '.summary // "CodeRabbit review completed."' >> "$GITHUB_OUTPUT"
+          echo "EOF" >> "$GITHUB_OUTPUT"
+
+      - name: Post CodeRabbit comment
+        if: steps.review.outputs.body != ''
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `### CodeRabbit Review\n\n${{ steps.review.outputs.body }}\n\n---\n*Automated review via CodeRabbit CLI.*`
+            })
