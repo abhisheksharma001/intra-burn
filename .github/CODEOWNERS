@@ -1,0 +1,11 @@
+# Global fallback — repo owner
+* @abhisheksharma001
+
+# Database / Supabase changes require Palash review
+**/supabase/** @Palash-Devo7
+**/database/** @Palash-Devo7
+**/db/** @Palash-Devo7
+**/migrations/** @Palash-Devo7
+**/schema/** @Palash-Devo7
+**/*.sql @Palash-Devo7
+supabase/config.toml @Palash-Devo7
