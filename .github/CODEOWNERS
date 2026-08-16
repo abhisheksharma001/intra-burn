@@ -1,5 +1,5 @@
-# Global fallback — repo owner
-* @abhisheksharma001
+# Global fallback — both owner and Palash can approve
+* @abhisheksharma001 @Palash-Devo7
 
 # Database / Supabase changes require Palash review
 **/supabase/** @Palash-Devo7
