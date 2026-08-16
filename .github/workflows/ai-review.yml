@@ -1,0 +1,70 @@
+name: AI PR Review
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+    branches: [main, dev]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  ai-review:
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.draft == false
+    steps:
+      - name: Checkout PR
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get PR diff
+        id: diff
+        run: |
+          git diff origin/${{ github.base_ref }}...HEAD > /tmp/pr.diff
+          echo "diff<<EOF" >> "$GITHUB_OUTPUT"
+          cat /tmp/pr.diff >> "$GITHUB_OUTPUT"
+          echo "EOF" >> "$GITHUB_OUTPUT"
+
+      - name: Run Claude review
+        if: ${{ secrets.ANTHROPIC_API_KEY != '' }}
+        id: review
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          # Truncate diff if too large
+          DIFF=$(cat /tmp/pr.diff | head -c 25000)
+          PAYLOAD=$(jq -n \
+            --arg model "claude-3-5-sonnet-20241022" \
+            --arg diff "$DIFF" \
+            '{
+              model: $model,
+              max_tokens: 1024,
+              messages: [
+                {
+                  role: "user",
+                  content: "Review this pull request diff. Focus on bugs, security issues, performance, and clarity. Keep it concise and actionable.\n\n" + $diff
+                }
+              ]
+            }')
+          RESPONSE=$(curl -s https://api.anthropic.com/v1/messages \
+            -H "x-api-key: $ANTHROPIC_API_KEY" \
+            -H "anthropic-version: 2023-06-01" \
+            -H "content-type: application/json" \
+            -d "$PAYLOAD")
+          echo "body<<EOF" >> "$GITHUB_OUTPUT"
+          echo "$RESPONSE" | jq -r '.content[0].text // "AI review returned no content."' >> "$GITHUB_OUTPUT"
+          echo "EOF" >> "$GITHUB_OUTPUT"
+
+      - name: Post AI review comment
+        if: steps.review.outputs.body != ''
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `### AI Review (Claude)\n\n${{ steps.review.outputs.body }}\n\n---\n*This is an automated review. Human review still required.*`
+            })
