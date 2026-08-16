@@ -21,24 +21,16 @@ jobs:
 
       - name: Install CodeRabbit CLI
         env:
-          CODERRABBIT_API_KEY: ${{ secrets.CODERABBIT_API_KEY }}
+          CODERABBIT_API_KEY: ${{ secrets.CODERABBIT_API_KEY }}
         run: |
-          if [ -z "$CODERRABBIT_API_KEY" ]; then
-            echo "CODERABBIT_API_KEY not set. Skipping CodeRabbit review."
-            exit 0
-          fi
           curl -fsSL https://cli.coderabbit.ai/install.sh | sh
-          cr auth login --api-key "$CODERRABBIT_API_KEY"
+          cr auth login --api-key "$CODERABBIT_API_KEY"
 
       - name: Run CodeRabbit review
         id: review
         env:
-          CODERRABBIT_API_KEY: ${{ secrets.CODERABBIT_API_KEY }}
+          CODERABBIT_API_KEY: ${{ secrets.CODERABBIT_API_KEY }}
         run: |
-          if [ -z "$CODERRABBIT_API_KEY" ]; then
-            echo "body=CodeRabbit API key not configured." >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
           cr review --base "${{ github.base_ref }}" --agent > /tmp/cr-review.json || true
           echo "body<<EOF" >> "$GITHUB_OUTPUT"
           cat /tmp/cr-review.json | jq -r '.summary // "CodeRabbit review completed."' >> "$GITHUB_OUTPUT"
